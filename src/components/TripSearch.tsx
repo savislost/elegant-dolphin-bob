@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, Loader2, Sparkles, MapPin, Calendar } from 'lucide-react';
+import { Search, Loader2, MapPin, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { motion } from 'framer-motion';
 
@@ -23,11 +23,12 @@ export const TripSearch: React.FC<TripSearchProps> = ({ onSearch, isLoading }) =
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!location.trim()) return;
+    if (!location.trim() || isLoading) return;
     onSearch(location.trim(), duration);
   };
 
   const handleSelectPreset = (city: string) => {
+    if (isLoading) return;
     setLocation(city);
     onSearch(city, duration);
   };
@@ -48,7 +49,7 @@ export const TripSearch: React.FC<TripSearchProps> = ({ onSearch, isLoading }) =
           Where to next?
         </h1>
         <p className="text-sm sm:text-base font-sans text-black/60 max-w-lg mx-auto leading-relaxed">
-          Enter any city or country. Our AI auto-detects local weather, aesthetic vibe, and curates an essential monochrome packing wardrobe.
+          Enter any city or country. Gemini AI auto-detects local weather, aesthetic vibe, and curates an essential monochrome packing wardrobe.
         </p>
       </div>
 
@@ -63,7 +64,8 @@ export const TripSearch: React.FC<TripSearchProps> = ({ onSearch, isLoading }) =
               value={location}
               onChange={(e) => setLocation(e.target.value)}
               placeholder="Enter City, Country... (e.g. Kyoto, Japan)"
-              className="w-full bg-transparent text-black placeholder:text-black/30 text-base font-sans font-medium focus:outline-none py-3"
+              disabled={isLoading}
+              className="w-full bg-transparent text-black placeholder:text-black/30 text-base font-sans font-medium focus:outline-none py-3 disabled:opacity-50"
               required
             />
           </div>
@@ -74,7 +76,8 @@ export const TripSearch: React.FC<TripSearchProps> = ({ onSearch, isLoading }) =
             <select
               value={duration}
               onChange={(e) => setDuration(Number(e.target.value))}
-              className="bg-transparent font-mono text-xs text-black font-medium focus:outline-none py-2 cursor-pointer"
+              disabled={isLoading}
+              className="bg-transparent font-mono text-xs text-black font-medium focus:outline-none py-2 cursor-pointer disabled:opacity-50"
             >
               {[3, 4, 5, 7, 10, 14].map((d) => (
                 <option key={d} value={d} className="bg-white text-black">
@@ -87,13 +90,13 @@ export const TripSearch: React.FC<TripSearchProps> = ({ onSearch, isLoading }) =
           {/* Submit Button */}
           <Button
             type="submit"
-            disabled={isLoading}
-            className="w-full sm:w-auto h-12 bg-black hover:bg-black/90 text-white font-sans text-xs font-semibold rounded-2xl px-6 transition-all transform active:scale-95 shadow-md flex items-center justify-center space-x-2"
+            disabled={isLoading || !location.trim()}
+            className="w-full sm:w-auto h-12 bg-black hover:bg-black/90 text-white font-sans text-xs font-semibold rounded-2xl px-6 transition-all transform active:scale-95 shadow-md flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isLoading ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />
-                <span className="font-mono">Analyzing Climate...</span>
+                <span className="font-mono">Generating Wardrobe...</span>
               </>
             ) : (
               <>
@@ -111,8 +114,9 @@ export const TripSearch: React.FC<TripSearchProps> = ({ onSearch, isLoading }) =
             <button
               key={city}
               type="button"
+              disabled={isLoading}
               onClick={() => handleSelectPreset(city)}
-              className="font-mono text-[11px] px-3 py-1 rounded-full bg-black/5 hover:bg-black hover:text-white text-black/70 border border-black/5 transition-all"
+              className="font-mono text-[11px] px-3 py-1 rounded-full bg-black/5 hover:bg-black hover:text-white text-black/70 border border-black/5 transition-all disabled:opacity-40 disabled:hover:bg-black/5 disabled:hover:text-black/70"
             >
               {city}
             </button>

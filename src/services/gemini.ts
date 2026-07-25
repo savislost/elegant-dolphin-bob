@@ -6,8 +6,8 @@ export async function generatePackingPlanWithGemini(
 ): Promise<GeneratedPackingPlan> {
   const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
 
-  if (!apiKey) {
-    throw new Error("VITE_GEMINI_API_KEY is undefined! Make sure .env.local is in the root directory and starts with VITE_.");
+  if (!apiKey || apiKey.trim() === '') {
+    throw new Error("VITE_GEMINI_API_KEY is missing in .env.local");
   }
 
   const prompt = `
@@ -119,7 +119,7 @@ Return ONLY a valid JSON object matching this TypeScript structure:
       if (!response.ok) {
         const errorText = await response.text();
         const errorDetails = `HTTP ${response.status} ${response.statusText} (${model}): ${errorText}`;
-        console.error('API Route Error:', errorDetails);
+        console.error('Gemini API Error:', errorDetails);
         throw new Error(errorDetails);
       }
 
@@ -128,10 +128,11 @@ Return ONLY a valid JSON object matching this TypeScript structure:
 
       if (!rawText) {
         const emptyMsg = `Empty response content returned from model ${model}`;
-        console.error('API Route Error:', emptyMsg);
+        console.error('Gemini API Error:', emptyMsg);
         throw new Error(emptyMsg);
       }
 
+      // Always strip Markdown JSON fences before calling JSON.parse()
       const cleanText = rawText.replace(/```json|```/g, '').trim();
       const parsed = JSON.parse(cleanText);
 
@@ -158,7 +159,7 @@ Return ONLY a valid JSON object matching this TypeScript structure:
         essentialsList.push({ id: `e-${idx++}`, name: item, category: 'Weather & Extras', packed: false });
       });
 
-      console.log(`✅ Gemini API call succeeded for "${location}"!`);
+      console.log(`✅ Gemini API call succeeded for "${location}" using model "${model}"!`);
 
       return {
         location,
@@ -187,7 +188,7 @@ Return ONLY a valid JSON object matching this TypeScript structure:
         essentialsChecklist: essentialsList,
       };
     } catch (error: any) {
-      console.error('API Route Error:', error);
+      console.error('Gemini API Error:', error);
       lastError = error;
     }
   }
