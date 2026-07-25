@@ -11,10 +11,6 @@ export function useTripStore() {
 
   useEffect(() => {
     try {
-      const storedPlan = localStorage.getItem(STORAGE_KEY);
-      if (storedPlan) {
-        setCurrentPlan(JSON.parse(storedPlan));
-      }
       const storedSaved = localStorage.getItem(HISTORY_KEY);
       if (storedSaved) {
         setSavedTrips(JSON.parse(storedSaved));
@@ -36,6 +32,15 @@ export function useTripStore() {
       });
     } catch (e) {
       console.error('Failed to save plan', e);
+    }
+  };
+
+  const clearCurrentPlan = () => {
+    setCurrentPlan(null);
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+    } catch (e) {
+      console.error('Failed to clear stored plan', e);
     }
   };
 
@@ -90,6 +95,7 @@ export function useTripStore() {
   return {
     currentPlan,
     savePlan,
+    clearCurrentPlan,
     toggleItemPacked,
     addCustomItem,
     deleteCustomItem,
