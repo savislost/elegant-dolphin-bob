@@ -1,19 +1,13 @@
 import { GeneratedPackingPlan, EssentialItem, CapsuleItem } from '@/types/trip';
 
-// Retrieve Gemini API Key from Vite env or fallback
-const GEMINI_API_KEY =
-  (import.meta.env.VITE_GEMINI_API_KEY as string) ||
-  (import.meta.env.GEMINI_API_KEY as string) ||
-  '';
-
 export async function generatePackingPlanWithGemini(
   location: string,
   durationDays: number = 5
 ): Promise<GeneratedPackingPlan> {
-  if (!GEMINI_API_KEY || GEMINI_API_KEY.trim() === '') {
-    const errorMsg = 'Missing API Key: VITE_GEMINI_API_KEY is not defined in environment variables.';
-    console.error('API Route Error:', errorMsg);
-    throw new Error(errorMsg);
+  const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+
+  if (!apiKey) {
+    throw new Error("VITE_GEMINI_API_KEY is undefined! Make sure .env.local is in the root directory and starts with VITE_.");
   }
 
   const prompt = `
@@ -99,7 +93,6 @@ Return ONLY a valid JSON object matching this TypeScript structure:
 }
 `;
 
-  // Models to attempt: gemini-2.5-flash first, then gemini-1.5-flash
   const models = ['gemini-2.5-flash', 'gemini-1.5-flash'];
   let lastError: Error | null = null;
 
@@ -108,7 +101,7 @@ Return ONLY a valid JSON object matching this TypeScript structure:
       console.log(`[PackSmart AI] Sending request for location "${location}" using model "${model}"...`);
 
       const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
         {
           method: 'POST',
           headers: {
@@ -139,11 +132,9 @@ Return ONLY a valid JSON object matching this TypeScript structure:
         throw new Error(emptyMsg);
       }
 
-      // JSON FIX: Strip out markdown formatting using exact regex
       const cleanText = rawText.replace(/```json|```/g, '').trim();
       const parsed = JSON.parse(cleanText);
 
-      // Format essentials into flat list with category labels
       const essentialsList: EssentialItem[] = [];
       let idx = 0;
 

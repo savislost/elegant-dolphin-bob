@@ -10,7 +10,7 @@ import { generatePackingPlanWithGemini, generateFallbackPackingPlan } from '@/se
 import { showSuccess, showError } from '@/utils/toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { MadeWithDyad } from '@/components/made-with-dyad';
-import { Shirt, CheckSquare, Sparkles } from 'lucide-react';
+import { Shirt, CheckSquare, Sparkles, AlertTriangle, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const Index: React.FC = () => {
@@ -30,6 +30,7 @@ const Index: React.FC = () => {
 
   const [isLoading, setIsLoading] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // Initialize with Kyoto plan on initial load if no plan saved
   useEffect(() => {
@@ -41,17 +42,17 @@ const Index: React.FC = () => {
 
   const handleSearchLocation = async (location: string, duration: number) => {
     setIsLoading(true);
+    setErrorMessage(null);
     try {
       const newPlan = await generatePackingPlanWithGemini(location, duration);
       savePlan(newPlan);
       setShowSearch(false);
       showSuccess(`PackSmart AI curated plan for ${location}!`);
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      showError('Encountered an issue loading AI plan. Loaded offline fallback!');
-      const fallback = generateFallbackPackingPlan(location, duration);
-      savePlan(fallback);
-      setShowSearch(false);
+      const rawMessage = err?.message || 'An unknown error occurred while calling the Gemini API.';
+      setErrorMessage(rawMessage);
+      showError('Failed to generate packing plan. Check error banner above.');
     } finally {
       setIsLoading(false);
     }
@@ -61,17 +62,51 @@ const Index: React.FC = () => {
     <div className="min-h-screen bg-white text-[#0A0A0A] font-sans selection:bg-black selection:text-white pb-16">
       {/* Navigation Header */}
       <Header
-        onNewTripClick={() => setShowSearch(true)}
+        onNewTripClick={() => {
+          setShowSearch(true);
+          setErrorMessage(null);
+        }}
         savedTrips={savedTrips}
         onSelectSavedTrip={(plan) => {
           loadSavedTrip(plan);
           setShowSearch(false);
+          setErrorMessage(null);
           showSuccess(`Loaded travel plan for ${plan.location}`);
         }}
         activeLocation={currentPlan?.location}
       />
 
       <main className="max-w-5xl mx-auto px-4">
+        {/* On-screen Raw Error Alert Banner */}
+        <AnimatePresence>
+          {errorMessage && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="mb-6 p-4 rounded-2xl bg-red-50 border border-red-200 text-red-900 shadow-sm flex items-start justify-between gap-3"
+            >
+              <div className="flex items-start space-x-3">
+                <AlertTriangle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                <div>
+                  <h4 className="font-sans text-xs font-bold uppercase tracking-wider text-red-700">
+                    Gemini API Error
+                  </h4>
+                  <p className="font-mono text-xs mt-1 leading-relaxed break-all text-red-800">
+                    {errorMessage}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setErrorMessage(null)}
+                className="text-red-500 hover:text-red-800 p-1 rounded-lg transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {/* Search Modal or Direct Search View */}
         <AnimatePresence>
           {(showSearch || !currentPlan) && (
@@ -134,7 +169,10 @@ const Index: React.FC = () => {
                 </TabsList>
 
                 <button
-                  onClick={() => setShowSearch(true)}
+                  onClick={() => {
+                    setShowSearch(true);
+                    setErrorMessage(null);
+                  }}
                   className="font-mono text-xs text-black/60 hover:text-black transition-colors flex items-center space-x-1"
                 >
                   <Sparkles className="w-3.5 h-3.5" />
