@@ -10,7 +10,7 @@ import { generatePackingPlanWithGemini, generateFallbackPackingPlan } from '@/se
 import { showSuccess, showError } from '@/utils/toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { MadeWithDyad } from '@/components/made-with-dyad';
-import { Shirt, CheckSquare, Sparkles, AlertTriangle, X } from 'lucide-react';
+import { Shirt, CheckSquare, Sparkles, AlertTriangle, Clock, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const Index: React.FC = () => {
@@ -31,8 +31,9 @@ const Index: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isRateLimit, setIsRateLimit] = useState(false);
 
-  // Initialize with Kyoto plan on initial load if no plan saved
+  // Initialize with offline Kyoto plan on mount if no plan exists (NO API call on mount)
   useEffect(() => {
     if (!currentPlan && savedTrips.length === 0) {
       const fallback = generateFallbackPackingPlan('Kyoto, Japan', 5);
@@ -43,16 +44,25 @@ const Index: React.FC = () => {
   const handleSearchLocation = async (location: string, duration: number) => {
     setIsLoading(true);
     setErrorMessage(null);
+    setIsRateLimit(false);
+
     try {
       const newPlan = await generatePackingPlanWithGemini(location, duration);
       savePlan(newPlan);
       setShowSearch(false);
-      showSuccess(`PackSmart AI curated plan for ${location}!`);
+      showSuccess(`PackSmart AI plan loaded for ${location}!`);
     } catch (err: any) {
-      console.error(err);
-      const rawMessage = err?.message || 'An unknown error occurred while calling the Gemini API.';
-      setErrorMessage(rawMessage);
-      showError('Failed to generate packing plan. Check error banner above.');
+      console.error('Search error:', err);
+      const rawMessage = err?.message || 'An error occurred while fetching your packing plan.';
+
+      if (rawMessage.includes('429') || rawMessage.includes('Rate Limit') || rawMessage.includes('RESOURCE_EXHAUSTED')) {
+        setIsRateLimit(true);
+        setErrorMessage('Rate limit reached. Please wait 15-30 seconds before submitting another search.');
+      } else {
+        setIsRateLimit(false);
+        setErrorMessage(rawMessage);
+      }
+      showError('Could not fetch travel plan. See alert banner.');
     } finally {
       setIsLoading(false);
     }
@@ -65,41 +75,60 @@ const Index: React.FC = () => {
         onNewTripClick={() => {
           setShowSearch(true);
           setErrorMessage(null);
+          setIsRateLimit(false);
         }}
         savedTrips={savedTrips}
         onSelectSavedTrip={(plan) => {
           loadSavedTrip(plan);
           setShowSearch(false);
           setErrorMessage(null);
+          setIsRateLimit(false);
           showSuccess(`Loaded travel plan for ${plan.location}`);
         }}
         activeLocation={currentPlan?.location}
       />
 
       <main className="max-w-5xl mx-auto px-4">
-        {/* On-screen Raw Error Alert Banner */}
+        {/* On-screen Rate Limit or API Error Alert Banner */}
         <AnimatePresence>
           {errorMessage && (
             <motion.div
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
-              className="mb-6 p-4 rounded-2xl bg-red-50 border border-red-200 text-red-900 shadow-sm flex items-start justify-between gap-3"
+              className={`mb-6 p-4 rounded-2xl border shadow-sm flex items-start justify-between gap-3 ${
+                isRateLimit
+                  ? 'bg-amber-50 border-amber-300 text-amber-900'
+                  : 'bg-red-50 border-red-200 text-red-900'
+              }`}
             >
               <div className="flex items-start space-x-3">
-                <AlertTriangle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                {isRateLimit ? (
+                  <Clock className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                ) : (
+                  <AlertTriangle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                )}
                 <div>
-                  <h4 className="font-sans text-xs font-bold uppercase tracking-wider text-red-700">
-                    Gemini API Error
+                  <h4 className={`font-sans text-xs font-bold uppercase tracking-wider ${
+                    isRateLimit ? 'text-amber-800' : 'text-red-700'
+                  }`}>
+                    {isRateLimit ? 'Rate Limit Alert' : 'Gemini API Error'}
                   </h4>
-                  <p className="font-mono text-xs mt-1 leading-relaxed break-all text-red-800">
+                  <p className={`font-mono text-xs mt-1 leading-relaxed break-all ${
+                    isRateLimit ? 'text-amber-900 font-semibold' : 'text-red-800'
+                  }`}>
                     {errorMessage}
                   </p>
                 </div>
               </div>
               <button
-                onClick={() => setErrorMessage(null)}
-                className="text-red-500 hover:text-red-800 p-1 rounded-lg transition-colors"
+                onClick={() => {
+                  setErrorMessage(null);
+                  setIsRateLimit(false);
+                }}
+                className={`p-1 rounded-lg transition-colors ${
+                  isRateLimit ? 'text-amber-600 hover:text-amber-900' : 'text-red-500 hover:text-red-800'
+                }`}
               >
                 <X className="w-4 h-4" />
               </button>
@@ -107,7 +136,7 @@ const Index: React.FC = () => {
           )}
         </AnimatePresence>
 
-        {/* Search Modal or Direct Search View */}
+        {/* Search View */}
         <AnimatePresence>
           {(showSearch || !currentPlan) && (
             <motion.div
@@ -121,7 +150,7 @@ const Index: React.FC = () => {
           )}
         </AnimatePresence>
 
-        {/* Render Travel Plan Dashboard when plan exists and search is inactive */}
+        {/* Dashboard when plan exists and search is inactive */}
         {currentPlan && !showSearch && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -129,7 +158,7 @@ const Index: React.FC = () => {
             transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
             className="space-y-8"
           >
-            {/* Auto-Detected City & Climate Highlights */}
+            {/* City & Climate Highlights */}
             <CityHighlights
               cityInfo={currentPlan.city_info}
               location={currentPlan.location}
@@ -172,6 +201,7 @@ const Index: React.FC = () => {
                   onClick={() => {
                     setShowSearch(true);
                     setErrorMessage(null);
+                    setIsRateLimit(false);
                   }}
                   className="font-mono text-xs text-black/60 hover:text-black transition-colors flex items-center space-x-1"
                 >

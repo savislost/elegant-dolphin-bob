@@ -1,9 +1,29 @@
 import { GeneratedPackingPlan, EssentialItem, CapsuleItem } from '@/types/trip';
 
+// Session Cache Key helper
+function getCacheKey(location: string, durationDays: number): string {
+  return `packsmart_cache_${location.toLowerCase().trim()}_${durationDays}`;
+}
+
+// Sleep helper for backoff delays
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
 export async function generatePackingPlanWithGemini(
   location: string,
   durationDays: number = 5
 ): Promise<GeneratedPackingPlan> {
+  // 1. Check local session cache first
+  const cacheKey = getCacheKey(location, durationDays);
+  try {
+    const cachedData = sessionStorage.getItem(cacheKey);
+    if (cachedData) {
+      console.log(`[PackSmart AI] Loaded "${location}" from session cache.`);
+      return JSON.parse(cachedData) as GeneratedPackingPlan;
+    }
+  } catch (e) {
+    console.warn('[PackSmart AI] Cache lookup failed:', e);
+  }
+
   const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
 
   if (!apiKey || apiKey.trim() === '') {
@@ -94,102 +114,129 @@ Return ONLY a valid JSON object matching this TypeScript structure:
 `;
 
   const models = ['gemini-2.5-flash', 'gemini-2.0-flash'];
+  const MAX_RETRIES = 3;
   let lastError: Error | null = null;
 
   for (const model of models) {
-    try {
-      console.log(`[PackSmart AI] Sending request for location "${location}" using model "${model}"...`);
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        console.log(`[PackSmart AI] Sending request for location "${location}" using model "${model}" (Attempt ${attempt}/${MAX_RETRIES})...`);
 
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: prompt }] }],
-            generationConfig: {
-              temperature: 0.3,
+        const response = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
             },
-          }),
+            body: JSON.stringify({
+              contents: [{ parts: [{ text: prompt }] }],
+              generationConfig: {
+                temperature: 0.3,
+              },
+            }),
+          }
+        );
+
+        if (response.status === 429) {
+          const delayMs = attempt * 3000; // 3s on 1st retry, 6s on 2nd retry, 9s on 3rd
+          console.warn(`[PackSmart AI] HTTP 429 Rate Limit hit on attempt ${attempt}. Retrying in ${delayMs / 1000} seconds...`);
+          if (attempt < MAX_RETRIES) {
+            await sleep(delayMs);
+            continue;
+          } else {
+            throw new Error(`HTTP 429 Rate Limit reached for model ${model}. Please wait 15-30 seconds before submitting another search.`);
+          }
         }
-      );
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        const errorDetails = `HTTP ${response.status} ${response.statusText} (${model}): ${errorText}`;
-        console.error('Gemini API Error:', errorDetails);
-        throw new Error(errorDetails);
+        if (!response.ok) {
+          const errorText = await response.text();
+          const errorDetails = `HTTP ${response.status} ${response.statusText} (${model}): ${errorText}`;
+          console.error('Gemini API Error:', errorDetails);
+          throw new Error(errorDetails);
+        }
+
+        const data = await response.json();
+        const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+
+        if (!rawText) {
+          const emptyMsg = `Empty response content returned from model ${model}`;
+          console.error('Gemini API Error:', emptyMsg);
+          throw new Error(emptyMsg);
+        }
+
+        // Clean Markdown fences
+        const cleanText = rawText.replace(/```json|```/g, '').trim();
+        const parsed = JSON.parse(cleanText);
+
+        const essentialsList: EssentialItem[] = [];
+        let idx = 0;
+
+        const skincareList = parsed.essentials?.skincare_sun || [];
+        skincareList.forEach((item: string) => {
+          essentialsList.push({ id: `e-${idx++}`, name: item, category: 'Skincare & Sun', packed: false });
+        });
+
+        const techList = parsed.essentials?.tech_gear || [];
+        techList.forEach((item: string) => {
+          essentialsList.push({ id: `e-${idx++}`, name: item, category: 'Tech & Gear', packed: false });
+        });
+
+        const docList = parsed.essentials?.documents || [];
+        docList.forEach((item: string) => {
+          essentialsList.push({ id: `e-${idx++}`, name: item, category: 'Documents & Carry', packed: false });
+        });
+
+        const weatherList = parsed.essentials?.weather_extras || [];
+        weatherList.forEach((item: string) => {
+          essentialsList.push({ id: `e-${idx++}`, name: item, category: 'Weather & Extras', packed: false });
+        });
+
+        const resultPlan: GeneratedPackingPlan = {
+          location,
+          durationDays,
+          createdAt: new Date().toISOString(),
+          city_info: {
+            weather_summary: parsed.city_info?.weather_summary || '20°C • Temperate',
+            auto_vibe: parsed.city_info?.auto_vibe || 'Minimalist Chic',
+            local_highlights: parsed.city_info?.local_highlights || [
+              'Stay hydrated with a refillable water bottle.',
+              'Keep digital screenshots of your flight & lodging bookings offline.',
+              'Pack versatile neutral layers for variable weather.'
+            ],
+          },
+          capsule_wardrobe: (parsed.capsule_wardrobe || []).map((c: any, i: number) => ({
+            id: `c-${i}`,
+            category: c.category || 'Top',
+            item: c.item || 'Cotton Crew Tee',
+            reason: c.reason || 'Essential everyday base layer',
+          })),
+          outfit_combinations: (parsed.outfit_combinations || []).map((o: any, i: number) => ({
+            id: `o-${i}`,
+            title: o.title || `Day ${i + 1} Outfit`,
+            items: o.items || [],
+          })),
+          essentialsChecklist: essentialsList,
+        };
+
+        // Cache in sessionStorage for remaining session
+        try {
+          sessionStorage.setItem(cacheKey, JSON.stringify(resultPlan));
+        } catch (e) {
+          console.warn('[PackSmart AI] Failed to save result to sessionStorage:', e);
+        }
+
+        console.log(`✅ Gemini API call succeeded for "${location}" using model "${model}"!`);
+        return resultPlan;
+
+      } catch (error: any) {
+        console.error('Gemini API Error:', error);
+        lastError = error;
+        // If it was a non-429 error or final retry failed, break retry loop to try next model or fail
+        if (!error?.message?.includes('429')) {
+          break;
+        }
       }
-
-      const data = await response.json();
-      const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-
-      if (!rawText) {
-        const emptyMsg = `Empty response content returned from model ${model}`;
-        console.error('Gemini API Error:', emptyMsg);
-        throw new Error(emptyMsg);
-      }
-
-      // Always strip Markdown JSON fences before calling JSON.parse()
-      const cleanText = rawText.replace(/```json|```/g, '').trim();
-      const parsed = JSON.parse(cleanText);
-
-      const essentialsList: EssentialItem[] = [];
-      let idx = 0;
-
-      const skincareList = parsed.essentials?.skincare_sun || [];
-      skincareList.forEach((item: string) => {
-        essentialsList.push({ id: `e-${idx++}`, name: item, category: 'Skincare & Sun', packed: false });
-      });
-
-      const techList = parsed.essentials?.tech_gear || [];
-      techList.forEach((item: string) => {
-        essentialsList.push({ id: `e-${idx++}`, name: item, category: 'Tech & Gear', packed: false });
-      });
-
-      const docList = parsed.essentials?.documents || [];
-      docList.forEach((item: string) => {
-        essentialsList.push({ id: `e-${idx++}`, name: item, category: 'Documents & Carry', packed: false });
-      });
-
-      const weatherList = parsed.essentials?.weather_extras || [];
-      weatherList.forEach((item: string) => {
-        essentialsList.push({ id: `e-${idx++}`, name: item, category: 'Weather & Extras', packed: false });
-      });
-
-      console.log(`✅ Gemini API call succeeded for "${location}" using model "${model}"!`);
-
-      return {
-        location,
-        durationDays,
-        createdAt: new Date().toISOString(),
-        city_info: {
-          weather_summary: parsed.city_info?.weather_summary || '20°C • Temperate',
-          auto_vibe: parsed.city_info?.auto_vibe || 'Minimalist Chic',
-          local_highlights: parsed.city_info?.local_highlights || [
-            'Stay hydrated with a refillable water bottle.',
-            'Keep digital screenshots of your flight & lodging bookings offline.',
-            'Pack versatile neutral layers for variable weather.'
-          ],
-        },
-        capsule_wardrobe: (parsed.capsule_wardrobe || []).map((c: any, i: number) => ({
-          id: `c-${i}`,
-          category: c.category || 'Top',
-          item: c.item || 'Cotton Crew Tee',
-          reason: c.reason || 'Essential everyday base layer',
-        })),
-        outfit_combinations: (parsed.outfit_combinations || []).map((o: any, i: number) => ({
-          id: `o-${i}`,
-          title: o.title || `Day ${i + 1} Outfit`,
-          items: o.items || [],
-        })),
-        essentialsChecklist: essentialsList,
-      };
-    } catch (error: any) {
-      console.error('Gemini API Error:', error);
-      lastError = error;
     }
   }
 
