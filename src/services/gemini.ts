@@ -93,7 +93,7 @@ Return ONLY a valid JSON object matching this TypeScript structure:
 }
 `;
 
-  const models = ['gemini-2.5-flash', 'gemini-1.5-flash'];
+  const models = ['gemini-2.5-flash', 'gemini-2.0-flash'];
   let lastError: Error | null = null;
 
   for (const model of models) {
