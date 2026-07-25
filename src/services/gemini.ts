@@ -1,15 +1,18 @@
 import { GeneratedPackingPlan, EssentialItem, CapsuleItem } from '@/types/trip';
 
-// Retrieve Gemini API Key from environment or fallback key
+// Retrieve Gemini API Key from Vite env or fallback
 const GEMINI_API_KEY =
   (import.meta.env.VITE_GEMINI_API_KEY as string) ||
   (import.meta.env.GEMINI_API_KEY as string) ||
-  'AQ.Ab8RN6KgS5orjIqnNnGxR0rX8qAMlqnHkF2oMqtiXOT372Yg6A';
+  '';
 
-export async function generatePackingPlanWithGemini(location: string, durationDays: number = 5): Promise<GeneratedPackingPlan> {
+export async function generatePackingPlanWithGemini(
+  location: string,
+  durationDays: number = 5
+): Promise<GeneratedPackingPlan> {
   if (!GEMINI_API_KEY || GEMINI_API_KEY.trim() === '') {
-    const errorMsg = '❌ Gemini API Key is missing! Please provide VITE_GEMINI_API_KEY or GEMINI_API_KEY in your environment.';
-    console.error(errorMsg);
+    const errorMsg = 'Missing API Key: VITE_GEMINI_API_KEY is not defined in environment variables.';
+    console.error('API Route Error:', errorMsg);
     throw new Error(errorMsg);
   }
 
@@ -17,13 +20,13 @@ export async function generatePackingPlanWithGemini(location: string, durationDa
 You are PackSmart AI, an ultra-luxurious minimalist travel stylist and destination expert.
 The user is planning a ${durationDays}-day trip to: "${location}".
 
-Analyze this specific destination ("${location}"), predict typical forecast/climate for this place, local aesthetic vibe, and curate a minimal capsule wardrobe & packing checklist.
+Analyze this location, predict typical forecast/climate for this place, local aesthetic vibe, and curate a minimal capsule wardrobe & packing checklist.
 
-Return ONLY a valid JSON object matching this TypeScript structure without any markdown wrapped code blocks:
+Return ONLY a valid JSON object matching this TypeScript structure:
 {
   "city_info": {
-    "weather_summary": "18°C • Breezy & Crisp",
-    "auto_vibe": "Minimalist Tailoring & Oversized Outerwear",
+    "weather_summary": "18°C • Breezy & Autumnal",
+    "auto_vibe": "Minimalist Tailoring & Trench Coats",
     "local_highlights": [
       "Respect local etiquette: Keep voice low on public transit",
       "Must Visit: Independent third-wave espresso bar in central district",
@@ -94,18 +97,15 @@ Return ONLY a valid JSON object matching this TypeScript structure without any m
     ]
   }
 }
-
-Ensure all advice, items, and recommendations are customized specifically for "${location}".
 `;
 
-  // List of models to attempt in order (using valid Google AI Studio model names)
-  const models = ['gemini-1.5-flash', 'gemini-2.0-flash', 'gemini-1.5-pro'];
-
+  // Models to attempt: gemini-2.5-flash first, then gemini-1.5-flash
+  const models = ['gemini-2.5-flash', 'gemini-1.5-flash'];
   let lastError: Error | null = null;
 
   for (const model of models) {
     try {
-      console.log(`[PackSmart AI] Sending request for location "${location}" to model: ${model}...`);
+      console.log(`[PackSmart AI] Sending request for location "${location}" using model "${model}"...`);
 
       const response = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`,
@@ -117,7 +117,6 @@ Ensure all advice, items, and recommendations are customized specifically for "$
           body: JSON.stringify({
             contents: [{ parts: [{ text: prompt }] }],
             generationConfig: {
-              responseMimeType: 'application/json',
               temperature: 0.3,
             },
           }),
@@ -126,24 +125,25 @@ Ensure all advice, items, and recommendations are customized specifically for "$
 
       if (!response.ok) {
         const errorText = await response.text();
-        const statusMsg = `HTTP ${response.status} ${response.statusText} from Google AI Studio (${model})`;
-        console.error(`❌ Gemini API Call Error (${model}):`, statusMsg, errorText);
-        throw new Error(`${statusMsg}: ${errorText}`);
+        const errorDetails = `HTTP ${response.status} ${response.statusText} (${model}): ${errorText}`;
+        console.error('API Route Error:', errorDetails);
+        throw new Error(errorDetails);
       }
 
       const data = await response.json();
       const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
 
       if (!rawText) {
-        const emptyMsg = `No text content generated from model ${model}`;
-        console.error(`❌ Gemini Response Error:`, emptyMsg, data);
+        const emptyMsg = `Empty response content returned from model ${model}`;
+        console.error('API Route Error:', emptyMsg);
         throw new Error(emptyMsg);
       }
 
-      const cleanedText = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
-      const parsed = JSON.parse(cleanedText);
+      // JSON FIX: Strip out markdown formatting using exact regex
+      const cleanText = rawText.replace(/```json|```/g, '').trim();
+      const parsed = JSON.parse(cleanText);
 
-      // Format essentials into flat list with category tags
+      // Format essentials into flat list with category labels
       const essentialsList: EssentialItem[] = [];
       let idx = 0;
 
@@ -167,7 +167,7 @@ Ensure all advice, items, and recommendations are customized specifically for "$
         essentialsList.push({ id: `e-${idx++}`, name: item, category: 'Weather & Extras', packed: false });
       });
 
-      console.log(`✅ Successfully generated PackSmart AI plan for "${location}" using ${model}!`);
+      console.log(`✅ Gemini API call succeeded for "${location}"!`);
 
       return {
         location,
@@ -195,15 +195,13 @@ Ensure all advice, items, and recommendations are customized specifically for "$
         })),
         essentialsChecklist: essentialsList,
       };
-    } catch (err: any) {
-      console.error(`Attempt with model ${model} failed:`, err);
-      lastError = err;
+    } catch (error: any) {
+      console.error('API Route Error:', error);
+      lastError = error;
     }
   }
 
-  // If all models fail, surface the exact error
-  console.error(`❌ All Gemini API attempts failed for location "${location}". Error details:`, lastError);
-  throw lastError || new Error('Failed to fetch from Google AI Studio Gemini API');
+  throw lastError || new Error('Failed to generate packing plan with Gemini API');
 }
 
 export function generateFallbackPackingPlan(location: string, durationDays: number = 5): GeneratedPackingPlan {
