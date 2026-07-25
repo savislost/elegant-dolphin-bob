@@ -1,51 +1,41 @@
 import { useState, useEffect } from 'react';
-import { GeneratedPackingPlan, PackingItem } from '@/types/trip';
+import { GeneratedPackingPlan, EssentialItem } from '@/types/trip';
 
-const STORAGE_KEY = 'packsmart_active_plan_v2';
-const SAVED_TRIPS_KEY = 'packsmart_saved_trips_v2';
+const STORAGE_KEY = 'packsmart_mono_plan_v3';
+const HISTORY_KEY = 'packsmart_saved_history_v3';
 
 export function useTripStore() {
   const [currentPlan, setCurrentPlan] = useState<GeneratedPackingPlan | null>(null);
   const [savedTrips, setSavedTrips] = useState<GeneratedPackingPlan[]>([]);
   const [filter, setFilter] = useState<'all' | 'unpacked' | 'packed'>('all');
-  const [searchQuery, setSearchQuery] = useState('');
 
-  // Load initial state
   useEffect(() => {
     try {
       const storedPlan = localStorage.getItem(STORAGE_KEY);
       if (storedPlan) {
         setCurrentPlan(JSON.parse(storedPlan));
       }
-      const storedSaved = localStorage.getItem(SAVED_TRIPS_KEY);
+      const storedSaved = localStorage.getItem(HISTORY_KEY);
       if (storedSaved) {
         setSavedTrips(JSON.parse(storedSaved));
       }
     } catch (e) {
-      console.error('Failed to parse saved trips from storage', e);
+      console.error('Failed to parse saved trips', e);
     }
   }, []);
 
-  // Sync current plan to localStorage
   const savePlan = (plan: GeneratedPackingPlan) => {
     setCurrentPlan(plan);
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(plan));
-      // Also add to saved trips history if not present
       setSavedTrips((prev) => {
-        const exists = prev.some((p) => p.destination === plan.destination && p.createdAt === plan.createdAt);
-        if (exists) {
-          const updated = prev.map((p) => (p.destination === plan.destination && p.createdAt === plan.createdAt ? plan : p));
-          localStorage.setItem(SAVED_TRIPS_KEY, JSON.stringify(updated));
-          return updated;
-        } else {
-          const updated = [plan, ...prev.slice(0, 9)];
-          localStorage.setItem(SAVED_TRIPS_KEY, JSON.stringify(updated));
-          return updated;
-        }
+        const filtered = prev.filter((p) => p.location.toLowerCase() !== plan.location.toLowerCase());
+        const updated = [plan, ...filtered.slice(0, 8)];
+        localStorage.setItem(HISTORY_KEY, JSON.stringify(updated));
+        return updated;
       });
     } catch (e) {
-      console.error('Failed to save plan to localStorage', e);
+      console.error('Failed to save plan', e);
     }
   };
 
@@ -58,15 +48,14 @@ export function useTripStore() {
     savePlan(updatedPlan);
   };
 
-  const addCustomItem = (name: string, category: PackingItem['category']) => {
+  const addCustomItem = (name: string, category: EssentialItem['category']) => {
     if (!currentPlan || !name.trim()) return;
-    const newItem: PackingItem = {
+    const newItem: EssentialItem = {
       id: `custom-${Date.now()}`,
       name: name.trim(),
       category,
       packed: false,
       isCustom: true,
-      recommendationReason: 'Added manually by you',
     };
     const updatedPlan = {
       ...currentPlan,
@@ -94,15 +83,6 @@ export function useTripStore() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(plan));
   };
 
-  const deleteSavedTrip = (index: number) => {
-    setSavedTrips((prev) => {
-      const updated = prev.filter((_, i) => i !== index);
-      localStorage.setItem(SAVED_TRIPS_KEY, JSON.stringify(updated));
-      return updated;
-    });
-  };
-
-  // Stats calculation
   const totalItems = currentPlan?.essentialsChecklist.length || 0;
   const packedItemsCount = currentPlan?.essentialsChecklist.filter((i) => i.packed).length || 0;
   const progressPercentage = totalItems > 0 ? Math.round((packedItemsCount / totalItems) * 100) : 0;
@@ -116,11 +96,8 @@ export function useTripStore() {
     resetCheckedState,
     savedTrips,
     loadSavedTrip,
-    deleteSavedTrip,
     filter,
     setFilter,
-    searchQuery,
-    setSearchQuery,
     stats: {
       totalItems,
       packedItemsCount,

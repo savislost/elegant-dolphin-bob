@@ -1,47 +1,36 @@
-export type TripVibe = 'Minimalist Streetwear' | 'Beach Casual' | 'Formal/Business' | 'Outdoor/Adventure' | 'Nightlife & Glam';
-
-export type WeatherForecast = 'Sunny & Hot' | 'Cool & Rainy' | 'Cold & Snowy' | 'Mild & Humid';
-
-export interface TripInput {
-  destination: string;
-  durationDays: number;
-  vibe: TripVibe;
-  weather: WeatherForecast;
+export interface CityInfo {
+  weather_summary: string; // e.g. "18°C • Breezy & Autumnal"
+  auto_vibe: string;       // e.g. "Minimalist Tailoring & Trench Coats"
+  local_highlights: string[]; // 3 concise, curated city tips
 }
 
 export interface CapsuleItem {
   id: string;
-  name: string;
-  category: 'Tops' | 'Bottoms' | 'Outerwear' | 'Shoes' | 'Accessories';
-  color: string;
-  versatilityTip: string;
-  quantity: number;
+  category: 'Top' | 'Bottom' | 'Outerwear' | 'Shoes' | 'Accessories';
+  item: string;
+  reason: string;
 }
 
 export interface OutfitCombo {
   id: string;
-  dayLabel: string; // e.g. "Day 1 - Sightseeing & Arrival"
-  vibe: string;
-  itemsIncluded: string[]; // item names or IDs
-  stylingNotes: string;
+  title: string;
+  items: string[];
 }
 
-export interface PackingItem {
+export interface EssentialItem {
   id: string;
   name: string;
-  category: 'Skincare & Sun' | 'Tech & Gear' | 'Documents & Carry' | 'Weather & Extras' | 'Clothing';
+  category: 'Skincare & Sun' | 'Tech & Gear' | 'Documents & Carry' | 'Weather & Extras';
   packed: boolean;
-  recommendationReason?: string;
   isCustom?: boolean;
 }
 
 export interface GeneratedPackingPlan {
-  destination: string;
+  location: string;
   durationDays: number;
-  vibe: TripVibe;
-  weather: WeatherForecast;
   createdAt: string;
-  capsuleWardrobe: CapsuleItem[];
-  outfitCombos: OutfitCombo[];
-  essentialsChecklist: PackingItem[];
+  city_info: CityInfo;
+  capsule_wardrobe: CapsuleItem[];
+  outfit_combinations: OutfitCombo[];
+  essentialsChecklist: EssentialItem[];
 }

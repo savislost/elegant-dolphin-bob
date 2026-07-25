@@ -7,58 +7,27 @@ import {
   Check,
   Plus,
   Trash2,
-  Sparkles,
-  Info,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { PackingItem } from '@/types/trip';
+import { EssentialItem } from '@/types/trip';
+import { motion } from 'framer-motion';
 
 interface EssentialsChecklistProps {
-  items: PackingItem[];
+  items: EssentialItem[];
   onToggleItem: (id: string) => void;
-  onAddItem: (name: string, category: PackingItem['category']) => void;
+  onAddItem: (name: string, category: EssentialItem['category']) => void;
   onDeleteItem: (id: string) => void;
   filter: 'all' | 'unpacked' | 'packed';
-  searchQuery: string;
 }
 
 const CATEGORY_META: Record<
-  PackingItem['category'],
-  { icon: React.ReactNode; color: string; badge: string }
+  EssentialItem['category'],
+  { icon: React.ReactNode }
 > = {
-  'Skincare & Sun': {
-    icon: <Sun className="w-4 h-4 text-amber-400" />,
-    color: 'border-amber-500/20 bg-amber-500/5',
-    badge: 'text-amber-300 bg-amber-950/60 border-amber-800/40',
-  },
-  'Tech & Gear': {
-    icon: <Laptop className="w-4 h-4 text-cyan-400" />,
-    color: 'border-cyan-500/20 bg-cyan-500/5',
-    badge: 'text-cyan-300 bg-cyan-950/60 border-cyan-800/40',
-  },
-  'Documents & Carry': {
-    icon: <Shield className="w-4 h-4 text-emerald-400" />,
-    color: 'border-emerald-500/20 bg-emerald-500/5',
-    badge: 'text-emerald-300 bg-emerald-950/60 border-emerald-800/40',
-  },
-  'Weather & Extras': {
-    icon: <Umbrella className="w-4 h-4 text-violet-400" />,
-    color: 'border-violet-500/20 bg-violet-500/5',
-    badge: 'text-violet-300 bg-violet-950/60 border-violet-800/40',
-  },
-  Clothing: {
-    icon: <Sparkles className="w-4 h-4 text-pink-400" />,
-    color: 'border-pink-500/20 bg-pink-500/5',
-    badge: 'text-pink-300 bg-pink-950/60 border-pink-800/40',
-  },
+  'Skincare & Sun': { icon: <Sun className="w-4 h-4 text-black" /> },
+  'Tech & Gear': { icon: <Laptop className="w-4 h-4 text-black" /> },
+  'Documents & Carry': { icon: <Shield className="w-4 h-4 text-black" /> },
+  'Weather & Extras': { icon: <Umbrella className="w-4 h-4 text-black" /> },
 };
 
 export const EssentialsChecklist: React.FC<EssentialsChecklistProps> = ({
@@ -67,10 +36,9 @@ export const EssentialsChecklist: React.FC<EssentialsChecklistProps> = ({
   onAddItem,
   onDeleteItem,
   filter,
-  searchQuery,
 }) => {
   const [newItemName, setNewItemName] = useState('');
-  const [newItemCategory, setNewItemCategory] = useState<PackingItem['category']>('Tech & Gear');
+  const [newItemCategory, setNewItemCategory] = useState<EssentialItem['category']>('Tech & Gear');
 
   const handleAddSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -79,16 +47,13 @@ export const EssentialsChecklist: React.FC<EssentialsChecklistProps> = ({
     setNewItemName('');
   };
 
-  // Filter items
   const filteredItems = items.filter((item) => {
     if (filter === 'packed' && !item.packed) return false;
     if (filter === 'unpacked' && item.packed) return false;
-    if (searchQuery.trim() && !item.name.toLowerCase().includes(searchQuery.toLowerCase())) return false;
     return true;
   });
 
-  // Group by category
-  const categories: PackingItem['category'][] = [
+  const categories: EssentialItem['category'][] = [
     'Skincare & Sun',
     'Tech & Gear',
     'Documents & Carry',
@@ -96,131 +61,116 @@ export const EssentialsChecklist: React.FC<EssentialsChecklistProps> = ({
   ];
 
   return (
-    <div className="space-y-6">
-      {/* Quick Add Custom Item Liquid Container */}
-      <form onSubmit={handleAddSubmit} className="backdrop-blur-xl bg-slate-900/60 border border-white/10 rounded-2xl p-4 shadow-lg flex flex-col sm:flex-row gap-3 items-center">
-        <div className="w-full sm:flex-1">
-          <Input
-            value={newItemName}
-            onChange={(e) => setNewItemName(e.target.value)}
-            placeholder="Add a custom item (e.g. Travel Pillow, Prescriptions)..."
-            className="bg-slate-950/60 border-white/10 text-white placeholder:text-slate-500 text-xs h-10 rounded-xl"
-          />
-        </div>
-        <div className="w-full sm:w-48">
-          <Select value={newItemCategory} onValueChange={(v) => setNewItemCategory(v as PackingItem['category'])}>
-            <SelectTrigger className="bg-slate-950/60 border-white/10 text-slate-200 text-xs h-10 rounded-xl">
-              <SelectValue placeholder="Category" />
-            </SelectTrigger>
-            <SelectContent className="bg-slate-900 border-white/10 text-slate-200 rounded-xl">
-              {categories.map((cat) => (
-                <SelectItem key={cat} value={cat} className="text-xs">
-                  {cat}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+    <div className="space-y-8">
+      {/* Quick Add Custom Item Form */}
+      <form onSubmit={handleAddSubmit} className="glass-card rounded-2xl p-4 shadow-sm border border-black/10 flex flex-col sm:flex-row gap-3 items-center">
+        <input
+          type="text"
+          value={newItemName}
+          onChange={(e) => setNewItemName(e.target.value)}
+          placeholder="Add custom packing item (e.g. Travel Pillow, Prescriptions)..."
+          className="flex-1 w-full bg-transparent text-black placeholder:text-black/30 font-sans text-xs focus:outline-none px-2 py-1"
+        />
+        <select
+          value={newItemCategory}
+          onChange={(e) => setNewItemCategory(e.target.value as EssentialItem['category'])}
+          className="w-full sm:w-48 bg-black/5 font-mono text-xs text-black border border-black/10 rounded-xl px-3 py-2 focus:outline-none"
+        >
+          {categories.map((cat) => (
+            <option key={cat} value={cat}>
+              {cat}
+            </option>
+          ))}
+        </select>
         <Button
           type="submit"
-          className="w-full sm:w-auto h-10 bg-gradient-to-r from-cyan-500 to-indigo-600 hover:from-cyan-400 hover:to-indigo-500 text-white font-semibold text-xs rounded-xl px-4 flex items-center justify-center space-x-1.5"
+          size="sm"
+          className="w-full sm:w-auto bg-black text-white hover:bg-black/90 rounded-xl px-4 py-2 font-sans text-xs font-semibold flex items-center justify-center space-x-1"
         >
-          <Plus className="w-4 h-4" />
-          <span>Add Item</span>
+          <Plus className="w-3.5 h-3.5" />
+          <span>Add</span>
         </Button>
       </form>
 
-      {/* Categorized Items */}
+      {/* Categorized Packing Checklists */}
       <div className="space-y-6">
         {categories.map((category) => {
-          const categoryItems = filteredItems.filter((i) => i.category === category);
-          if (categoryItems.length === 0 && (filter !== 'all' || searchQuery)) return null;
+          const catItems = filteredItems.filter((i) => i.category === category);
+          const totalCat = items.filter((i) => i.category === category).length;
+          const packedCat = items.filter((i) => i.category === category && i.packed).length;
 
-          const meta = CATEGORY_META[category];
-          const totalCatItems = items.filter((i) => i.category === category).length;
-          const packedCatItems = items.filter((i) => i.category === category && i.packed).length;
+          if (catItems.length === 0 && filter !== 'all') return null;
 
           return (
-            <div
+            <motion.div
               key={category}
-              className={`backdrop-blur-xl bg-slate-900/60 border ${meta.color} rounded-3xl p-5 shadow-2xl shadow-cyan-950/10`}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="glass-card rounded-3xl p-6 shadow-glass border border-black/10"
             >
-              <div className="flex items-center justify-between mb-4 border-b border-white/5 pb-3">
-                <div className="flex items-center space-x-2.5">
-                  <div className="p-2 rounded-xl bg-white/5 border border-white/10">{meta.icon}</div>
+              <div className="flex items-center justify-between border-b border-black/10 pb-4 mb-4">
+                <div className="flex items-center space-x-3">
+                  <div className="w-8 h-8 rounded-full bg-black/5 flex items-center justify-center border border-black/10">
+                    {CATEGORY_META[category].icon}
+                  </div>
                   <div>
-                    <h3 className="font-bold text-base text-white">{category}</h3>
-                    <p className="text-[11px] text-slate-400">
-                      {packedCatItems} of {totalCatItems} packed
+                    <h4 className="font-serif text-xl text-black font-normal">{category}</h4>
+                    <p className="font-mono text-[10px] text-black/40">
+                      {packedCat} of {totalCat} packed
                     </p>
                   </div>
                 </div>
-                <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full border ${meta.badge}`}>
-                  {totalCatItems > 0 ? Math.round((packedCatItems / totalCatItems) * 100) : 0}% Packed
+                <span className="font-mono text-xs font-bold text-black bg-black/5 px-2.5 py-1 rounded-full border border-black/5">
+                  {totalCat > 0 ? Math.round((packedCat / totalCat) * 100) : 0}%
                 </span>
               </div>
 
-              {categoryItems.length === 0 ? (
-                <p className="text-xs text-slate-500 italic py-2">No matching items in this category.</p>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {categoryItems.map((item) => (
-                    <div
-                      key={item.id}
-                      onClick={() => onToggleItem(item.id)}
-                      className={`group cursor-pointer rounded-2xl p-3.5 border transition-all duration-200 flex items-start space-x-3 select-none ${
-                        item.packed
-                          ? 'bg-slate-950/30 border-emerald-500/20 opacity-70 hover:opacity-100'
-                          : 'bg-slate-950/60 border-white/10 hover:border-cyan-500/40 hover:bg-slate-950/80'
-                      }`}
-                    >
-                      {/* Checkbox button */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {catItems.map((item) => (
+                  <div
+                    key={item.id}
+                    onClick={() => onToggleItem(item.id)}
+                    className={`group cursor-pointer rounded-2xl p-3.5 border transition-all flex items-center justify-between select-none ${
+                      item.packed
+                        ? 'bg-black/5 border-black/10 opacity-60'
+                        : 'bg-white border-black/10 hover:border-black'
+                    }`}
+                  >
+                    <div className="flex items-center space-x-3 min-w-0">
                       <div
-                        className={`w-5 h-5 rounded-lg border mt-0.5 flex items-center justify-center transition-all ${
+                        className={`w-5 h-5 rounded-md border flex items-center justify-center transition-all ${
                           item.packed
-                            ? 'bg-emerald-500 border-emerald-400 text-slate-950 shadow-md shadow-emerald-500/30'
-                            : 'border-white/20 bg-white/5 group-hover:border-cyan-400'
+                            ? 'bg-black border-black text-white'
+                            : 'border-black/30 bg-transparent group-hover:border-black'
                         }`}
                       >
                         {item.packed && <Check className="w-3.5 h-3.5 stroke-[3]" />}
                       </div>
-
-                      {/* Content */}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between">
-                          <p
-                            className={`text-xs font-semibold truncate transition-colors ${
-                              item.packed ? 'line-through text-slate-400' : 'text-slate-100 group-hover:text-cyan-200'
-                            }`}
-                          >
-                            {item.name}
-                          </p>
-                          {item.isCustom && (
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                onDeleteItem(item.id);
-                              }}
-                              className="text-slate-500 hover:text-red-400 p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          )}
-                        </div>
-
-                        {item.recommendationReason && (
-                          <p className="text-[10px] text-slate-400 mt-0.5 line-clamp-1 flex items-center space-x-1">
-                            <Info className="w-2.5 h-2.5 text-cyan-400 flex-shrink-0" />
-                            <span>{item.recommendationReason}</span>
-                          </p>
-                        )}
-                      </div>
+                      <span
+                        className={`font-sans text-xs font-medium truncate ${
+                          item.packed ? 'line-through text-black/50' : 'text-black'
+                        }`}
+                      >
+                        {item.name}
+                      </span>
                     </div>
-                  ))}
-                </div>
-              )}
-            </div>
+
+                    {item.isCustom && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onDeleteItem(item.id);
+                        }}
+                        className="text-black/40 hover:text-red-600 p-1 transition-colors"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </motion.div>
           );
         })}
       </div>
