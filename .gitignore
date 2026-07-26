@@ -31,3 +31,4 @@ dist-ssr
 /playwright/.cache/
 .last-run.json
 .dyad/
+.env
