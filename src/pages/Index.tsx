@@ -40,21 +40,25 @@ const Index: React.FC = () => {
   };
 
   const handleSearchLocation = async (location: string, duration: number) => {
-    setIsLoading(true);
+    // Clear previous errors immediately on new search submission
     setErrorMessage(null);
     setIsRateLimit(false);
+    setIsLoading(true);
 
     try {
       const newPlan = await generatePackingPlanWithGemini(location, duration);
       savePlan(newPlan);
       showSuccess(`PackSmart AI plan loaded for ${location}!`);
     } catch (err: any) {
-      console.error('Search error:', err);
+      console.error("Gemini Raw Error:", err);
       const rawMessage = err?.message || 'An error occurred while fetching your packing plan.';
 
-      if (rawMessage.includes('429') || rawMessage.includes('Rate Limit') || rawMessage.includes('RESOURCE_EXHAUSTED')) {
+      if (rawMessage.includes('API Key Quota is 0')) {
+        setIsRateLimit(false);
+        setErrorMessage('API Key Quota is 0. Please create a new key under a new Google AI Studio project.');
+      } else if (rawMessage.includes('429') || rawMessage.includes('Rate limit') || rawMessage.includes('RESOURCE_EXHAUSTED')) {
         setIsRateLimit(true);
-        setErrorMessage('Rate limit reached. Please wait 15-30 seconds before submitting another search.');
+        setErrorMessage('Rate limit reached. Please wait 15-30 seconds.');
       } else {
         setIsRateLimit(false);
         setErrorMessage(rawMessage);
@@ -81,7 +85,7 @@ const Index: React.FC = () => {
       />
 
       <main className="max-w-5xl mx-auto px-4">
-        {/* On-screen Rate Limit or API Error Alert Banner */}
+        {/* On-screen Diagnostic Alert Banner */}
         <AnimatePresence>
           {errorMessage && (
             <motion.div
@@ -104,7 +108,7 @@ const Index: React.FC = () => {
                   <h4 className={`font-sans text-xs font-bold uppercase tracking-wider ${
                     isRateLimit ? 'text-amber-800' : 'text-red-700'
                   }`}>
-                    {isRateLimit ? 'Rate Limit Alert' : 'Gemini API Error'}
+                    {isRateLimit ? 'Rate Limit Alert' : 'Gemini API Diagnostic'}
                   </h4>
                   <p className={`font-mono text-xs mt-1 leading-relaxed break-all ${
                     isRateLimit ? 'text-amber-900 font-semibold' : 'text-red-800'

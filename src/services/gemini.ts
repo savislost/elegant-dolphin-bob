@@ -27,7 +27,9 @@ export async function generatePackingPlanWithGemini(
   const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
 
   if (!apiKey || apiKey.trim() === '') {
-    throw new Error("VITE_GEMINI_API_KEY is missing in .env.local");
+    const err = new Error("VITE_GEMINI_API_KEY is missing in .env.local");
+    console.error("Gemini Raw Error:", err);
+    throw err;
   }
 
   const prompt = `
@@ -114,7 +116,7 @@ Return ONLY a valid JSON object matching this TypeScript structure:
 `;
 
   const models = ['gemini-2.5-flash', 'gemini-2.0-flash'];
-  const MAX_RETRIES = 3;
+  const MAX_RETRIES = 2;
   let lastError: Error | null = null;
 
   for (const model of models) {
@@ -138,22 +140,26 @@ Return ONLY a valid JSON object matching this TypeScript structure:
           }
         );
 
-        if (response.status === 429) {
-          const delayMs = attempt * 3000; // 3s on 1st retry, 6s on 2nd retry, 9s on 3rd
-          console.warn(`[PackSmart AI] HTTP 429 Rate Limit hit on attempt ${attempt}. Retrying in ${delayMs / 1000} seconds...`);
-          if (attempt < MAX_RETRIES) {
-            await sleep(delayMs);
-            continue;
-          } else {
-            throw new Error(`HTTP 429 Rate Limit reached for model ${model}. Please wait 15-30 seconds before submitting another search.`);
-          }
-        }
-
         if (!response.ok) {
           const errorText = await response.text();
-          const errorDetails = `HTTP ${response.status} ${response.statusText} (${model}): ${errorText}`;
-          console.error('Gemini API Error:', errorDetails);
-          throw new Error(errorDetails);
+          console.error("Gemini Raw Error:", errorText);
+
+          if (errorText.includes("limit: 0") || errorText.includes("limit:0") || errorText.includes("quotaExceeded")) {
+            throw new Error("API Key Quota is 0. Please create a new key under a new Google AI Studio project.");
+          }
+
+          if (response.status === 429 || errorText.includes("429") || errorText.includes("RESOURCE_EXHAUSTED")) {
+            if (attempt < MAX_RETRIES) {
+              const delayMs = attempt * 3000;
+              console.warn(`[PackSmart AI] HTTP 429 on attempt ${attempt}. Retrying in ${delayMs / 1000}s...`);
+              await sleep(delayMs);
+              continue;
+            } else {
+              throw new Error("Rate limit reached. Please wait 15-30 seconds.");
+            }
+          }
+
+          throw new Error(`HTTP ${response.status} (${model}): ${errorText}`);
         }
 
         const data = await response.json();
@@ -161,7 +167,7 @@ Return ONLY a valid JSON object matching this TypeScript structure:
 
         if (!rawText) {
           const emptyMsg = `Empty response content returned from model ${model}`;
-          console.error('Gemini API Error:', emptyMsg);
+          console.error("Gemini Raw Error:", emptyMsg);
           throw new Error(emptyMsg);
         }
 
@@ -230,11 +236,10 @@ Return ONLY a valid JSON object matching this TypeScript structure:
         return resultPlan;
 
       } catch (error: any) {
-        console.error('Gemini API Error:', error);
+        console.error("Gemini Raw Error:", error);
         lastError = error;
-        // If it was a non-429 error or final retry failed, break retry loop to try next model or fail
-        if (!error?.message?.includes('429')) {
-          break;
+        if (error?.message?.includes("API Key Quota is 0")) {
+          throw error;
         }
       }
     }
