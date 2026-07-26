@@ -19,7 +19,7 @@ export default {
     },
     extend: {
       fontFamily: {
-        serif: ["'Instrument Serif'", "Georgia", "serif"],
+        serif: ["'Playfair Display'", "Georgia", "serif"],
         sans: ["'Plus Jakarta Sans'", "-apple-system", "BlinkMacSystemFont", "sans-serif"],
         mono: ["'Space Mono'", "monospace"],
       },
@@ -66,6 +66,15 @@ export default {
       boxShadow: {
         glass: "0 20px 40px -15px rgba(0, 0, 0, 0.05), 0 0 1px 1px rgba(0, 0, 0, 0.08)",
         'glass-hover': "0 30px 60px -12px rgba(0, 0, 0, 0.1), 0 0 1px 1px rgba(0, 0, 0, 0.15)",
+      },
+      keyframes: {
+        shimmer: {
+          '0%': { backgroundPosition: '-200% 0' },
+          '100%': { backgroundPosition: '200% 0' },
+        },
+      },
+      animation: {
+        shimmer: 'shimmer 2s infinite linear',
       },
     },
   },

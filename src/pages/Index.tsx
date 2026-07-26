@@ -5,12 +5,13 @@ import { CityHighlights } from '@/components/CityHighlights';
 import { ProgressHeader } from '@/components/ProgressHeader';
 import { CapsuleWardrobe } from '@/components/CapsuleWardrobe';
 import { EssentialsChecklist } from '@/components/EssentialsChecklist';
+import { SkeletonLoadingState } from '@/components/SkeletonLoader';
 import { useTripStore } from '@/hooks/useTripStore';
 import { generatePackingPlanWithGroq } from '@/services/groq';
 import { showSuccess, showError } from '@/utils/toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { MadeWithDyad } from '@/components/made-with-dyad';
-import { Shirt, CheckSquare, Sparkles, AlertTriangle, X } from 'lucide-react';
+import { Shirt, SquareCheck as CheckSquare, Sparkles, TriangleAlert as AlertTriangle, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const Index: React.FC = () => {
@@ -38,7 +39,6 @@ const Index: React.FC = () => {
   };
 
   const handleSearchLocation = async (location: string, duration: number) => {
-    // Clear previous errors immediately on new search submission
     setErrorMessage(null);
     setIsLoading(true);
 
@@ -57,8 +57,7 @@ const Index: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-white text-[#0A0A0A] font-sans selection:bg-black selection:text-white pb-16">
-      {/* Navigation Header */}
+    <div className="min-h-screen bg-white text-neutral-900 dark:bg-neutral-950 dark:text-neutral-100 font-sans selection:bg-neutral-900 selection:text-white dark:selection:bg-neutral-100 dark:selection:text-neutral-900 pb-16 transition-colors duration-500">
       <Header
         onNewTripClick={handleSearchClick}
         savedTrips={savedTrips}
@@ -71,29 +70,28 @@ const Index: React.FC = () => {
       />
 
       <main className="max-w-5xl mx-auto px-4">
-        {/* On-screen Diagnostic Alert Banner */}
         <AnimatePresence>
           {errorMessage && (
             <motion.div
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
-              className="mb-6 p-4 rounded-2xl border border-red-200 bg-red-50 text-red-900 shadow-sm flex items-start justify-between gap-3"
+              className="mb-6 p-4 rounded-3xl border border-red-200/80 dark:border-red-900/50 bg-red-50/80 dark:bg-red-950/30 backdrop-blur-md text-red-900 dark:text-red-200 shadow-sm flex items-start justify-between gap-3"
             >
               <div className="flex items-start space-x-3">
-                <AlertTriangle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                <AlertTriangle className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
                 <div>
-                  <h4 className="font-sans text-xs font-bold uppercase tracking-wider text-red-700">
+                  <h4 className="font-mono text-[10px] font-bold uppercase tracking-widest text-red-700 dark:text-red-400">
                     Groq API Notice
                   </h4>
-                  <p className="font-mono text-xs mt-1 leading-relaxed text-red-800">
+                  <p className="font-mono text-xs mt-1 leading-relaxed text-red-800 dark:text-red-300">
                     {errorMessage}
                   </p>
                 </div>
               </div>
               <button
                 onClick={() => setErrorMessage(null)}
-                className="p-1 rounded-lg text-red-500 hover:text-red-800 transition-colors"
+                className="p-1 rounded-lg text-red-500 dark:text-red-400 hover:text-red-800 dark:hover:text-red-200 transition-colors"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -101,7 +99,6 @@ const Index: React.FC = () => {
           )}
         </AnimatePresence>
 
-        {/* Hero Search View when currentPlan is null */}
         <AnimatePresence mode="wait">
           {!currentPlan ? (
             <motion.div
@@ -114,7 +111,6 @@ const Index: React.FC = () => {
               <TripSearch onSearch={handleSearchLocation} isLoading={isLoading} />
             </motion.div>
           ) : (
-            /* Dashboard when currentPlan has data */
             <motion.div
               key="plan-view"
               initial={{ opacity: 0, y: 20 }}
@@ -123,14 +119,12 @@ const Index: React.FC = () => {
               transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
               className="space-y-8"
             >
-              {/* City & Climate Highlights */}
               <CityHighlights
                 cityInfo={currentPlan.city_info}
                 location={currentPlan.location}
                 durationDays={currentPlan.durationDays}
               />
 
-              {/* Progress Header & Filter */}
               <ProgressHeader
                 plan={currentPlan}
                 packedCount={stats.packedItemsCount}
@@ -141,13 +135,12 @@ const Index: React.FC = () => {
                 onFilterChange={setFilter}
               />
 
-              {/* Dashboard Tabs */}
               <Tabs defaultValue="outfits" className="w-full">
-                <div className="flex justify-between items-center mb-6 border-b border-black/10 pb-4">
-                  <TabsList className="bg-black/5 border border-black/10 p-1 rounded-full">
+                <div className="flex justify-between items-center mb-6 border-b border-neutral-200/80 dark:border-neutral-800 pb-4">
+                  <TabsList className="bg-neutral-100/80 dark:bg-neutral-900/80 border border-neutral-200/80 dark:border-neutral-800 p-1 rounded-full backdrop-blur-md">
                     <TabsTrigger
                       value="outfits"
-                      className="data-[state=active]:bg-black data-[state=active]:text-white text-xs font-sans font-medium rounded-full px-5 py-2 transition-all flex items-center space-x-2"
+                      className="data-[state=active]:bg-neutral-900 data-[state=active]:text-white dark:data-[state=active]:bg-neutral-100 dark:data-[state=active]:text-neutral-900 text-xs font-sans font-medium rounded-full px-5 py-2 transition-all flex items-center space-x-2 data-[state=active]:shadow-sm"
                     >
                       <Shirt className="w-4 h-4" />
                       <span>Capsule Wardrobe</span>
@@ -155,7 +148,7 @@ const Index: React.FC = () => {
 
                     <TabsTrigger
                       value="checklist"
-                      className="data-[state=active]:bg-black data-[state=active]:text-white text-xs font-sans font-medium rounded-full px-5 py-2 transition-all flex items-center space-x-2"
+                      className="data-[state=active]:bg-neutral-900 data-[state=active]:text-white dark:data-[state=active]:bg-neutral-100 dark:data-[state=active]:text-neutral-900 text-xs font-sans font-medium rounded-full px-5 py-2 transition-all flex items-center space-x-2 data-[state=active]:shadow-sm"
                     >
                       <CheckSquare className="w-4 h-4" />
                       <span>Essentials Checklist</span>
@@ -164,14 +157,13 @@ const Index: React.FC = () => {
 
                   <button
                     onClick={handleSearchClick}
-                    className="font-mono text-xs text-black/60 hover:text-black transition-colors flex items-center space-x-1"
+                    className="font-mono text-xs text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100 transition-colors flex items-center space-x-1"
                   >
                     <Sparkles className="w-3.5 h-3.5" />
                     <span>Change Location</span>
                   </button>
                 </div>
 
-                {/* Tab 1: Wardrobe */}
                 <TabsContent value="outfits" className="focus-visible:outline-none">
                   <CapsuleWardrobe
                     capsuleItems={currentPlan.capsule_wardrobe}
@@ -179,7 +171,6 @@ const Index: React.FC = () => {
                   />
                 </TabsContent>
 
-                {/* Tab 2: Checklist */}
                 <TabsContent value="checklist" className="focus-visible:outline-none">
                   <EssentialsChecklist
                     items={currentPlan.essentialsChecklist}
@@ -195,8 +186,7 @@ const Index: React.FC = () => {
         </AnimatePresence>
       </main>
 
-      {/* Footer */}
-      <footer className="mt-20 pt-8 border-t border-black/5 text-center font-mono text-xs text-black/40">
+      <footer className="mt-20 pt-8 border-t border-neutral-200/80 dark:border-neutral-800 text-center font-mono text-xs text-neutral-400 dark:text-neutral-500">
         <p>PackSmart AI • Editorial Monochrome Travel & Wardrobe Stylist</p>
         <MadeWithDyad />
       </footer>
