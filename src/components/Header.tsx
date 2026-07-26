@@ -30,15 +30,12 @@ export const Header: React.FC<HeaderProps> = ({
       <div className="glass-panel rounded-full px-6 py-3.5 shadow-sm hover:shadow-md transition-all duration-300 flex items-center justify-between">
         {/* Brand logo */}
         <div className="flex items-center space-x-3 cursor-pointer group" onClick={onNewTripClick}>
-          <div className="w-8 h-8 rounded-full bg-neutral-900 dark:bg-neutral-100 text-white dark:text-neutral-900 flex items-center justify-center font-mono text-xs font-bold tracking-tighter transition-transform group-hover:scale-105">
-            PS
+          <div className="w-8 h-8 rounded-full bg-neutral-900 dark:bg-neutral-100 text-white dark:text-neutral-900 flex items-center justify-center text-sm transition-transform group-hover:scale-105">
+            <span role="img" aria-label="necktie">👔</span>
           </div>
           <div className="flex flex-col leading-tight">
             <span className="font-serif text-2xl font-bold tracking-tight text-neutral-900 dark:text-neutral-100 block leading-tight">
-              PackSmart
-            </span>
-            <span className="font-mono text-[9px] text-neutral-500 dark:text-neutral-400 tracking-widest uppercase mt-0.5">
-              EDITORIAL AI
+              PackSmart AI
             </span>
           </div>
         </div>

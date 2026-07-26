@@ -42,9 +42,6 @@ export const TripSearch: React.FC<TripSearchProps> = ({ onSearch, isLoading }) =
     >
       {/* Editorial Title Header */}
       <div className="text-center mb-8">
-        <span className="font-mono text-xs uppercase tracking-widest text-neutral-400 dark:text-neutral-500 block mb-3">
-          Automated Capsule & Essentials Stylist
-        </span>
         <h1 className="font-serif text-5xl sm:text-7xl tracking-tight text-neutral-900 dark:text-neutral-100 font-normal mb-4">
           Where to next?
         </h1>

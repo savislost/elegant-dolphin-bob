@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { Header } from '@/components/Header';
 import { TripSearch } from '@/components/TripSearch';
 import { CityHighlights } from '@/components/CityHighlights';
-import { ProgressHeader } from '@/components/ProgressHeader';
 import { CapsuleWardrobe } from '@/components/CapsuleWardrobe';
 import { EssentialsChecklist } from '@/components/EssentialsChecklist';
 import { SkeletonLoadingState } from '@/components/SkeletonLoader';
@@ -10,7 +9,6 @@ import { useTripStore } from '@/hooks/useTripStore';
 import { generatePackingPlanWithGroq } from '@/services/groq';
 import { showSuccess, showError } from '@/utils/toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { MadeWithDyad } from '@/components/made-with-dyad';
 import { Shirt, SquareCheck as CheckSquare, Sparkles, TriangleAlert as AlertTriangle, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -22,12 +20,9 @@ const Index: React.FC = () => {
     toggleItemPacked,
     addCustomItem,
     deleteCustomItem,
-    resetCheckedState,
     savedTrips,
     loadSavedTrip,
     filter,
-    setFilter,
-    stats,
   } = useTripStore();
 
   const [isLoading, setIsLoading] = useState(false);
@@ -125,16 +120,6 @@ const Index: React.FC = () => {
                 durationDays={currentPlan.durationDays}
               />
 
-              <ProgressHeader
-                plan={currentPlan}
-                packedCount={stats.packedItemsCount}
-                totalCount={stats.totalItems}
-                percentage={stats.progressPercentage}
-                onReset={resetCheckedState}
-                activeFilter={filter}
-                onFilterChange={setFilter}
-              />
-
               <Tabs defaultValue="outfits" className="w-full">
                 <div className="flex justify-between items-center mb-6 border-b border-neutral-200/80 dark:border-neutral-800 pb-4">
                   <TabsList className="bg-neutral-100/80 dark:bg-neutral-900/80 border border-neutral-200/80 dark:border-neutral-800 p-1 rounded-full backdrop-blur-md">
@@ -188,7 +173,6 @@ const Index: React.FC = () => {
 
       <footer className="mt-20 pt-8 border-t border-neutral-200/80 dark:border-neutral-800 text-center font-mono text-xs text-neutral-400 dark:text-neutral-500">
         <p>PackSmart AI • Editorial Monochrome Travel & Wardrobe Stylist</p>
-        <MadeWithDyad />
       </footer>
     </div>
   );

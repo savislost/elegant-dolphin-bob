@@ -34,7 +34,7 @@ export const CapsuleWardrobe: React.FC<CapsuleWardrobeProps> = ({ capsuleItems, 
         </div>
 
         {/* Horizontal Cards Carousel */}
-        <div className="flex space-x-4 overflow-x-auto pb-4 pt-1 scrollbar-none">
+        <div className="flex space-x-4 overflow-x-auto pb-4 pt-1 scrollbar-subtle">
           {capsuleItems.map((item, idx) => (
             <motion.div
               key={item.id || idx}
