@@ -6,11 +6,11 @@ import { ProgressHeader } from '@/components/ProgressHeader';
 import { CapsuleWardrobe } from '@/components/CapsuleWardrobe';
 import { EssentialsChecklist } from '@/components/EssentialsChecklist';
 import { useTripStore } from '@/hooks/useTripStore';
-import { generatePackingPlanWithGemini } from '@/services/gemini';
+import { generatePackingPlanWithGroq } from '@/services/groq';
 import { showSuccess, showError } from '@/utils/toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { MadeWithDyad } from '@/components/made-with-dyad';
-import { Shirt, CheckSquare, Sparkles, AlertTriangle, Clock, X } from 'lucide-react';
+import { Shirt, CheckSquare, Sparkles, AlertTriangle, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const Index: React.FC = () => {
@@ -31,39 +31,26 @@ const Index: React.FC = () => {
 
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [isRateLimit, setIsRateLimit] = useState(false);
 
   const handleSearchClick = () => {
     clearCurrentPlan();
     setErrorMessage(null);
-    setIsRateLimit(false);
   };
 
   const handleSearchLocation = async (location: string, duration: number) => {
     // Clear previous errors immediately on new search submission
     setErrorMessage(null);
-    setIsRateLimit(false);
     setIsLoading(true);
 
     try {
-      const newPlan = await generatePackingPlanWithGemini(location, duration);
+      const newPlan = await generatePackingPlanWithGroq(location, duration);
       savePlan(newPlan);
       showSuccess(`PackSmart AI plan loaded for ${location}!`);
     } catch (err: any) {
-      console.error("Gemini Raw Error:", err);
-      const rawMessage = err?.message || 'An error occurred while fetching your packing plan.';
-
-      if (rawMessage.includes('API Key Quota is 0')) {
-        setIsRateLimit(false);
-        setErrorMessage('API Key Quota is 0. Please create a new key under a new Google AI Studio project.');
-      } else if (rawMessage.includes('429') || rawMessage.includes('Rate limit') || rawMessage.includes('RESOURCE_EXHAUSTED')) {
-        setIsRateLimit(true);
-        setErrorMessage('Rate limit reached. Please wait 15-30 seconds.');
-      } else {
-        setIsRateLimit(false);
-        setErrorMessage(rawMessage);
-      }
-      showError('Could not fetch travel plan. See alert banner.');
+      console.error("Groq Raw Error:", err);
+      const userMsg = "Please check your VITE_GROQ_API_KEY in .env.local and try again.";
+      setErrorMessage(userMsg);
+      showError("Could not fetch travel plan. Please check your Groq API key.");
     } finally {
       setIsLoading(false);
     }
@@ -78,7 +65,6 @@ const Index: React.FC = () => {
         onSelectSavedTrip={(plan) => {
           loadSavedTrip(plan);
           setErrorMessage(null);
-          setIsRateLimit(false);
           showSuccess(`Loaded travel plan for ${plan.location}`);
         }}
         activeLocation={currentPlan?.location}
@@ -92,39 +78,22 @@ const Index: React.FC = () => {
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
-              className={`mb-6 p-4 rounded-2xl border shadow-sm flex items-start justify-between gap-3 ${
-                isRateLimit
-                  ? 'bg-amber-50 border-amber-300 text-amber-900'
-                  : 'bg-red-50 border-red-200 text-red-900'
-              }`}
+              className="mb-6 p-4 rounded-2xl border border-red-200 bg-red-50 text-red-900 shadow-sm flex items-start justify-between gap-3"
             >
               <div className="flex items-start space-x-3">
-                {isRateLimit ? (
-                  <Clock className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
-                ) : (
-                  <AlertTriangle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-                )}
+                <AlertTriangle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
                 <div>
-                  <h4 className={`font-sans text-xs font-bold uppercase tracking-wider ${
-                    isRateLimit ? 'text-amber-800' : 'text-red-700'
-                  }`}>
-                    {isRateLimit ? 'Rate Limit Alert' : 'Gemini API Diagnostic'}
+                  <h4 className="font-sans text-xs font-bold uppercase tracking-wider text-red-700">
+                    Groq API Notice
                   </h4>
-                  <p className={`font-mono text-xs mt-1 leading-relaxed break-all ${
-                    isRateLimit ? 'text-amber-900 font-semibold' : 'text-red-800'
-                  }`}>
+                  <p className="font-mono text-xs mt-1 leading-relaxed text-red-800">
                     {errorMessage}
                   </p>
                 </div>
               </div>
               <button
-                onClick={() => {
-                  setErrorMessage(null);
-                  setIsRateLimit(false);
-                }}
-                className={`p-1 rounded-lg transition-colors ${
-                  isRateLimit ? 'text-amber-600 hover:text-amber-900' : 'text-red-500 hover:text-red-800'
-                }`}
+                onClick={() => setErrorMessage(null)}
+                className="p-1 rounded-lg text-red-500 hover:text-red-800 transition-colors"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -132,7 +101,7 @@ const Index: React.FC = () => {
           )}
         </AnimatePresence>
 
-        {/* Search View when currentPlan is null */}
+        {/* Hero Search View when currentPlan is null */}
         <AnimatePresence mode="wait">
           {!currentPlan ? (
             <motion.div
