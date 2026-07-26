@@ -26,8 +26,8 @@ export async function generatePackingPlanWithGemini(
 
   const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
 
-  if (!apiKey || apiKey.trim() === '') {
-    const err = new Error("VITE_GEMINI_API_KEY is missing in .env.local");
+  if (!apiKey || typeof apiKey !== 'string' || apiKey.trim() === '') {
+    const err = new Error("VITE_GEMINI_API_KEY is missing or invalid in .env.local. Please provide a valid Gemini API key.");
     console.error("Gemini Raw Error:", err);
     throw err;
   }
@@ -238,7 +238,7 @@ Return ONLY a valid JSON object matching this TypeScript structure:
       } catch (error: any) {
         console.error("Gemini Raw Error:", error);
         lastError = error;
-        if (error?.message?.includes("API Key Quota is 0")) {
+        if (error?.message?.includes("API Key Quota is 0") || error?.message?.includes("VITE_GEMINI_API_KEY is missing")) {
           throw error;
         }
       }
